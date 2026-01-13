@@ -1,0 +1,27 @@
+[project]
+name = "questrel"
+version = "0.1.0"
+description = "Async play/quest generation from templates and resource pools"
+readme = "planning/initial_plan.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2.7",
+  "sqlalchemy>=2.0",
+]
+
+[project.scripts]
+questrel = "questrel.cli:main"
+
+[project.optional-dependencies]
+test = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
+]
+storage = [
+  "aiosqlite>=0.20",
+  "alembic>=1.13",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

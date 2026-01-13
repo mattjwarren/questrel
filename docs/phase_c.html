@@ -1,0 +1,20 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Questrel Phase C</title>
+  </head>
+  <body>
+    <p><a href="index.html">Back to index</a></p>
+    <h1>Phase C — End-to-End Generation</h1>
+    <p>
+      Phase C adds the public generation API and an end-to-end pipeline: select a template,
+      bind characters/locations/props from pools, and return a <code>GeneratedPlay</code>.
+    </p>
+    <h2>API</h2>
+    <pre><code>
+await questrel.generate_play(session, request, state=state)
+await questrel.generate_play_from_url("sqlite+aiosqlite:///./questrel.db", request)
+    </code></pre>
+  </body>
+</html>

@@ -1,0 +1,23 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Questrel Branching</title>
+  </head>
+  <body>
+    <p><a href="index.html">Back to index</a></p>
+    <h1>Branching Resolution</h1>
+    <p>
+      Outgoing edges are filtered by condition, sorted deterministically, tiered by priority,
+      and then resolved into MULTI edges plus at most one SINGLE edge.
+    </p>
+    <h2>Sorting</h2>
+    <ul>
+      <li>priority descending</li>
+      <li>order_index ascending</li>
+      <li>edge_id ascending (tie-break)</li>
+    </ul>
+    <h2>No valid edges</h2>
+    <p>Returns an empty list; the consuming game decides what to do next.</p>
+  </body>
+</html>

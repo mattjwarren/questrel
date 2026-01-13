@@ -1,0 +1,17 @@
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Demo/log artifacts
+*.log
+*.db
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/

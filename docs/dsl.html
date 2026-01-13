@@ -1,0 +1,29 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Questrel DSL</title>
+  </head>
+  <body>
+    <p><a href="index.html">Back to index</a></p>
+    <h1>Condition DSL</h1>
+    <p>
+      Questrel uses an author-friendly string expression DSL evaluated safely via AST validation and interpretation.
+    </p>
+    <h2>Access style</h2>
+    <pre><code>state.flags["x"]</code></pre>
+    <p>Missing keys evaluate as <code>None</code>.</p>
+    <h2>Examples</h2>
+    <pre><code>
+state.flags["met_mayor"] == True and state.flags["reputation"] &gt;= 10
+state.flags["key"] != None
+state.flags["faction"] in ["mages", "thieves"]
+    </code></pre>
+    <h2>Limits</h2>
+    <ul>
+      <li>Max length: 8192 chars</li>
+      <li>Max AST nodes: 1024</li>
+      <li>Max AST depth: 48</li>
+    </ul>
+  </body>
+</html>

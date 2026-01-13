@@ -1,0 +1,192 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Questrel Usage Guide</title>
+  </head>
+  <body>
+    <p><a href="index.html">Back to index</a></p>
+    <h1>Questrel — Comprehensive Usage Guide</h1>
+
+    <h2>Overview</h2>
+    <p>
+      Questrel generates small branching "plays" (quests) from a database of templates, graphs, and resource pools.
+      The output is structured data suitable for a game engine.
+    </p>
+
+    <h2>Key Concepts</h2>
+    <ul>
+      <li><b>Template</b>: a reusable quest/play blueprint</li>
+      <li><b>Graph</b>: nodes + edges representing the branching script</li>
+      <li><b>Resources</b>: characters, locations, props used to fill the template</li>
+      <li><b>Pools</b>: curated subsets of resources with weights and optional conditions</li>
+      <li><b>State</b>: runtime flags that influence branching and pool availability</li>
+    </ul>
+
+    <h2>Database Backends</h2>
+    <p>
+      The MVP uses SQLite via async SQLAlchemy. Postgres can be adopted later by switching the DB URL and migrating
+      JSON TEXT columns to JSONB. Constraints/metadata/spec fields are stored as JSON in TEXT behind a stable Python
+      type facade.
+    </p>
+
+    <h2>Scenario 1 — Quick Demo (CLI)</h2>
+    <p>This is the fastest way to see Questrel generating different plays.</p>
+
+    <h3>Option A: One-shot demo (seed + multiple generations)</h3>
+    <pre><code>
+H:/Documents/dev/git_repos/Questrel/.venv/Scripts/python.exe questrel_demo.py demo \
+  --db sqlite+aiosqlite:///./questrel_demo.db \
+  --overwrite \
+  --runs 6 --start-seed 1 \
+  --flag allow=true --flag brave=true --flag has_key=true --flag magic=true
+    </code></pre>
+
+    <p>
+      By default it prints one summary line per run. Add <code>--json</code> to print full JSON for each run.
+    </p>
+
+    <h3>Option B: Manual steps</h3>
+
+    <h4>Step 1: Seed a demo SQLite DB</h4>
+    <pre><code>
+H:/Documents/dev/git_repos/Questrel/.venv/Scripts/python.exe questrel_demo.py seed --db sqlite+aiosqlite:///./questrel_demo.db --overwrite
+    </code></pre>
+
+    <h4>Step 2: Generate a play</h4>
+    <p>
+      Flags control branching conditions and pool item availability. Missing flags evaluate as <code>None</code>.
+    </p>
+    <pre><code>
+H:/Documents/dev/git_repos/Questrel/.venv/Scripts/python.exe questrel_demo.py generate \
+  --db sqlite+aiosqlite:///./questrel_demo.db \
+  --max-characters 3 --locations 2 --props 1 \
+  --seed 1 \
+  --flag allow=true --flag brave=true --flag has_key=true --flag magic=false
+    </code></pre>
+
+    <h4>Step 3: Generate again with a different seed</h4>
+    <p>
+      Different seeds can select different templates and produce different bindings while remaining deterministic.
+    </p>
+    <pre><code>
+H:/Documents/dev/git_repos/Questrel/.venv/Scripts/python.exe questrel_demo.py generate \
+  --db sqlite+aiosqlite:///./questrel_demo.db \
+  --max-characters 3 --locations 2 --props 1 \
+  --seed 2 \
+  --flag allow=true --flag brave=true --flag has_key=true --flag magic=true
+    </code></pre>
+
+    <h2>Scenario 2 — Using the Library from Python</h2>
+    <p>
+      You can integrate Questrel directly in a game server. This example creates a request and calls
+      <code>generate_play_from_url</code>.
+    </p>
+    <pre><code>
+import asyncio
+
+from questrel import GenerationRequest, State, generate_play_from_url
+
+async def run():
+    req = GenerationRequest(max_characters=3, location_count=2, prop_count=1, seed=42)
+    state = State(flags={"allow": True, "brave": False, "has_key": True, "magic": True})
+    gen = await generate_play_from_url("sqlite+aiosqlite:///./questrel_demo.db", req, state=state)
+    print(gen.model_dump_json())
+
+asyncio.run(run())
+    </code></pre>
+
+  <h2>Scenario 3 — Using an Existing AsyncSession (Server Integration)</h2>
+  <p>
+    If your application already has an async SQLAlchemy engine/session (for example, a web server), call
+    <code>generate_play(session, ...)</code> directly.
+  </p>
+  <pre><code>
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from questrel import GenerationRequest, State, generate_play
+
+async def handle_request(session: AsyncSession) -> str:
+  req = GenerationRequest(max_characters=3, location_count=2, prop_count=1, seed=7)
+  state = State(flags={"brave": True})
+  gen = await generate_play(session, req, state=state)
+  return gen.model_dump_json()
+  </code></pre>
+
+    <h2>Scenario 4 — Populating the Database (Template + Graph + Pools)</h2>
+    <p>
+      The demo seeding is implemented in code (see <code>src/questrel/seed/demo_seed.py</code>), but the same concepts apply
+      when you build your own content pipeline.
+    </p>
+
+    <h3>Step-by-step</h3>
+    <ol>
+      <li>Create a <b>play_template</b> row (id, key, name).</li>
+      <li>Create <b>requirements</b>: role requirements, location requirements, prop requirements.</li>
+      <li>Create <b>script_node</b> rows (start node, scenes, endings).</li>
+      <li>Create <b>condition_expression</b> rows for your branching rules using the DSL.</li>
+      <li>Create <b>script_edge</b> rows linking nodes:
+        <ul>
+          <li>Set <code>priority</code> (higher wins).</li>
+          <li>Set <code>order_index</code> (author order).</li>
+          <li>Set <code>weight</code> for weighted selection among SINGLE edges.</li>
+          <li>Set <code>selection_mode</code> per edge: <code>single</code> or <code>multi</code>.</li>
+        </ul>
+      </li>
+      <li>Create catalog resources (<b>character_resource</b>, <b>location_resource</b>, <b>prop_resource</b>).</li>
+      <li>Create pools (<b>resource_pool</b>) and pool items (kind-specific tables) with weights.</li>
+      <li>(Optional) Gate pool items using <b>condition_expression</b> references.</li>
+    </ol>
+
+    <h2>Condition DSL Reference</h2>
+    <p>
+      The DSL is intentionally restrictive for safety. It supports only <code>state.flags["x"]</code> lookups, literals,
+      boolean operators, and comparisons.
+    </p>
+    <pre><code>
+state.flags["reputation"] &gt;= 10
+state.flags["has_key"] == True
+state.flags["faction"] in ["mages", "thieves"]
+state.flags["unknown"] == None
+    </code></pre>
+
+    <h2>Logging</h2>
+    <p>
+      Questrel can log to a file. The demo CLI supports <code>--log-file</code>, <code>--log-level</code>, and <code>--no-log</code>.
+      In a game integration you can call <code>questrel.logging.configure_logging()</code>.
+    </p>
+
+    <h2>Troubleshooting</h2>
+    <ul>
+      <li>If generation fails with "not enough candidates", add more pool items or relax constraints.</li>
+      <li>If branching doesn't trigger, check your state flags and condition expressions.</li>
+      <li>If you need reproducibility, always provide a seed.</li>
+    </ul>
+
+    <h2>Scenario 5 — Switching to Postgres (Future Migration)</h2>
+    <p>
+      Questrel is written to be SQLite-first but Postgres-ready.
+      When you are ready to move to Postgres, you typically:
+    </p>
+    <ol>
+      <li>Create a Postgres database and choose an async URL, for example: <code>postgresql+asyncpg://user:pass@host:5432/db</code>.</li>
+      <li>Install <code>asyncpg</code> in your environment.</li>
+      <li>Run Alembic migrations against the Postgres URL.</li>
+      <li>Migrate JSON TEXT columns to JSONB (recommended) and add indexes as needed.</li>
+      <li>Update your app configuration to use the new DB URL.</li>
+    </ol>
+
+    <h2>Scenario 6 — Interactive Text Adventure Demo</h2>
+    <p>
+      Questrel includes a tiny interactive text adventure demo that turns a generated play into a navigable
+      set of rooms with classic commands.
+    </p>
+    <pre><code>
+uv run text_adventure_demo.py
+    </code></pre>
+    <p>
+      See <a href="text_adventure_demo.html">Text Adventure Demo</a> for how it maps plays into rooms and how the
+      command vocabulary works.
+    </p>
+  </body>
+</html>

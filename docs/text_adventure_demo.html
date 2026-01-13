@@ -1,0 +1,84 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Questrel Text Adventure Demo</title>
+  </head>
+  <body>
+    <p><a href="index.html">Back to index</a></p>
+
+    <h1>Text Adventure Demo</h1>
+    <p>
+      Questrel includes a very small interactive "old-school" text adventure demo. It seeds a demo database,
+      generates a play, maps the generated locations into a handful of rooms, places characters and props,
+      and then lets you navigate using a classic command vocabulary.
+    </p>
+
+    <h2>How to run</h2>
+    <p>
+      The easiest way to run it without installing the package is via the repository runner script:
+    </p>
+    <pre><code>
+uv run text_adventure_demo.py
+    </code></pre>
+
+    <p>
+      It writes logs to <code>questrel_text_adventure.log</code> by default. You can disable logging by editing
+      the defaults in the demo or calling <code>run_repl(no_log=True)</code>.
+    </p>
+
+    <h2>What it does</h2>
+    <ol>
+      <li>Optionally seeds the demo DB (same dataset used by the CLI demo).</li>
+      <li>Calls <code>questrel.api.generate_play_from_url</code> to generate a play (nodes, edges, bindings).</li>
+      <li>Builds a tiny world map from the generated location bindings (up to 4 rooms).</li>
+      <li>Places generated characters and props into rooms (round-robin placement).</li>
+      <li>Starts a REPL loop that parses commands and updates state.</li>
+    </ol>
+
+    <h2>Command vocabulary</h2>
+    <ul>
+      <li><b>Movement</b>: <code>n</code>, <code>s</code>, <code>e</code>, <code>w</code>, <code>ne</code>, <code>nw</code>, <code>se</code>, <code>sw</code>, <code>u</code>, <code>d</code> (or <code>go &lt;dir&gt;</code>)</li>
+      <li><b>Look</b>: <code>look</code> (or <code>l</code>)</li>
+      <li><b>Inventory</b>: <code>inv</code> (or <code>i</code>)</li>
+      <li><b>Story</b>: <code>story</code> (reprints current story node)</li>
+      <li><b>Advance</b>: <code>next</code> (applies Questrel branching to move to the next story node)</li>
+      <li><b>Actions</b>: <code>get &lt;item&gt;</code>, <code>drop &lt;item&gt;</code>, <code>use &lt;item&gt; [on &lt;target&gt;]</code>, <code>talk &lt;person&gt;</code>, <code>attack &lt;person&gt;</code>, <code>give &lt;item&gt; to &lt;person&gt;</code></li>
+      <li><b>Debug</b>: <code>flags</code> (shows state flags)</li>
+      <li><b>Help</b>: <code>help</code></li>
+      <li><b>Exit</b>: <code>quit</code></li>
+    </ul>
+
+    <h2>How branching works in the demo</h2>
+    <p>
+      The demo uses Questrel's resolver to choose the next edge from the current story node:
+    </p>
+    <ul>
+      <li>Outgoing edges are filtered by condition expressions against <code>state.flags</code>.</li>
+      <li>Highest priority edges win; within the tier, the demo uses weighted selection.</li>
+      <li>The RNG is deterministic using the generated play seed + current node + step index.</li>
+    </ul>
+
+    <h2>How player actions affect the story</h2>
+    <p>
+      This demo is intentionally simple; it does not implement a full rule system. Instead, a few actions
+      set state flags that are referenced by the seeded conditions:
+    </p>
+    <ul>
+      <li><code>get key</code> or using a key sets <code>has_key=True</code></li>
+      <li><code>get scroll</code> or using a scroll sets <code>magic=True</code></li>
+      <li><code>get sword</code> or attacking certain characters sets <code>brave=True</code></li>
+      <li>Talking to certain characters may set <code>allow=True</code></li>
+    </ul>
+
+    <p>
+      You can inspect current flags at any time with <code>flags</code>, then use <code>next</code> to advance and observe
+      how different flags unlock different edges.
+    </p>
+
+    <h2>Source</h2>
+    <p>
+      Implementation: <code>src/questrel/demos/text_adventure.py</code>
+    </p>
+  </body>
+</html>
